@@ -58,7 +58,7 @@
         .envelope-wrapper { position: relative; width: 320px; height: 220px; perspective: 1200px; background: #fcf6f0; border-radius: 0 0 5px 5px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
         .envelope-lid { position: absolute; top: 0; left: 0; width: 100%; height: 50%; background: #eee0d3; clip-path: polygon(0 0, 100% 0, 50% 50%); z-index: 30; transform-origin: top; transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
         .envelope-front { position: absolute; bottom: 0; left: 0; width: 100%; height: 100%; background: #fcf6f0; clip-path: polygon(0 100%, 100% 100%, 100% 0, 50% 50%, 0 0); z-index: 20; filter: brightness(0.98); }
-        .card-inside { position: absolute; bottom: 5px; left: 5%; width: 90%; height: 95%; background: #fffdf5; z-index: 15; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 25px; text-align: center; border: 1px solid #ddd; transition: transform 1.2s cubic-bezier(0.19, 1, 0.22, 1); }
+        .card-inside { position: absolute; bottom: 5px; left: 5%; width: 90%; height: 95%; background: #fffdf5; z-index: 15; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 25px; text-align: center; border: 1px solid #ddd; transition: transform 1.2s cubic-bezier(0.19, 1, 0.22, 1); backface-visibility: hidden; will-change: transform; }
         .envelope-wrapper.open .envelope-lid { transform: rotateX(180deg); z-index: 10; }
         .envelope-wrapper.open .card-inside { transform: translateY(-150px) scale(1.05); }
 
@@ -125,12 +125,14 @@
         .modal-body { width: 100%; max-width: 480px; max-height: 85vh; background: white; padding: 30px; border-radius: 8px; position: relative; overflow-y: auto; text-align: center; }
         .modal-body label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; color: var(--accent); display: block; margin-top: 15px; margin-bottom: 4px; text-align: left; }
         input, select, textarea { width: 100%; padding: 10px 0; margin-bottom: 12px; border: none; border-bottom: 1px solid #ddd; background: transparent; outline: none; font-family: inherit; font-size: 16px !important; }
+        .member-accordion { border: 1px solid #f0f0f0; border-radius: 8px; margin-bottom: 10px; overflow: hidden; text-align: left; }
         .member-header { background: #fafafa; padding: 12px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-weight: 600; color: var(--accent); font-size: 0.9rem; border: 1px solid #f0f0f0; border-radius: 4px; margin-bottom: 5px; }
         .member-header.completed { background: var(--success) !important; color: var(--success-text) !important; }
         .member-content { padding: 15px; display: none; background: white; border-top: 1px solid #f0f0f0; }
         .member-content.open { display: block; }
         .btn-copy-settings { background: #f8f9fa; border: 1px solid #ddd; color: #666; font-size: 0.6rem; padding: 8px 12px; cursor: pointer; margin-top: 10px; text-transform: uppercase; border-radius: 4px; width: 100%; font-family: 'Montserrat', sans-serif; font-weight: 600; transition: 0.3s; }
         .spinner { display: none; width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid var(--accent); border-radius: 50%; animation: spin 1s linear infinite; margin: 20px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
@@ -185,7 +187,7 @@
 <div id="invitation-container">
     <div class="grain-overlay"></div>
     <nav>
-        <a href="#historia">Nosotros</a><a href="#galeria">Momentos</a><a href="#celebracion">Celebración</a><a href="#informacion">Información</a><a href="#fiesta">Fiesta</a><a href="#rsvp">Confirmar</a><a href="#recuerdos">Mensajes</a><a href="#contacto">Contacto</a>
+        <a href="#historia">Nosotros</a><a href="#galeria">Momentos</a><a href="#celebracion">Celebración</a><a href="#informacion">Información</a><a href="#fiesta">Fiesta</a><a href="#regalo">Detalle</a><a href="#rsvp">Confirmar</a><a href="#recuerdos">Mensajes</a><a href="#contacto">Contacto</a>
     </nav>
     
     <header class="main-invitation-header">
@@ -303,6 +305,7 @@
             <div id="step-2" style="display:none;"><div id="lista-nombres"></div></div>
             <div id="step-3" style="display:none;">
                 <div id="lista-miembros"></div>
+                <div id="companero-btn-area" style="margin-bottom: 20px;"></div>
                 <button class="btn-rsvp" style="width:100%; margin-top:20px;" onpointerdown="enviarConfirmacion()" id="btn-enviar">Guardar Todo</button>
             </div>
         </div>
@@ -313,6 +316,7 @@
 <script>
     let step = 1, lock = false, driveCount = 0;
     const URL_API = "https://script.google.com/macros/s/AKfycbwO_rHe04Hx4aXdnDvVShYmC9EUqq_Ka3Q3CWQjhX_nL3S3opgWiroEs7qLnqI8QUqW/exec";
+    let currentGroupId = null; // Guardamos el ID del grupo actual
 
     function updateTimer() {
         const diff = new Date("September 4, 2027 19:30:00").getTime() - new Date().getTime();
@@ -324,7 +328,6 @@
     }
     setInterval(updateTimer, 60000); updateTimer();
 
-    function copyIBAN() { navigator.clipboard.writeText("ES00 0000 0000 0000 0000 0000"); alert("Copiado"); }
     function next() { if(lock) return; lock = true; document.getElementById('game-s'+step).classList.remove('active'); step++; document.getElementById('game-s'+step).classList.add('active'); setTimeout(() => { lock = false; }, 800); }
     function scrollTrack(trackId, direction) { const track = document.getElementById(trackId); track.scrollBy({ left: direction * (track.clientWidth * 0.8), behavior: 'smooth' }); }
 
@@ -370,7 +373,7 @@
                 setTimeout(() => {
                     stage.style.opacity = '0';
                     setTimeout(() => {
-                        stage.style.display = 'none'; // Libera botones
+                        stage.style.display = 'none'; 
                         revealFinalInvitation();
                     }, 600);
                 }, 2200);
@@ -380,7 +383,6 @@
 
     function revealFinalInvitation() { document.body.style.overflow = 'auto'; const inv = document.getElementById('invitation-container'); inv.style.display = 'block'; requestAnimationFrame(() => { inv.style.opacity = '1'; AOS.init({ duration: 1000, once: true }); cargarMuro(); }); }
 
-    // --- LOGICA RSVP ---
     function abrirRSVP() {
         document.getElementById('input-busqueda').value = '';
         document.getElementById('step-1').style.display = 'block';
@@ -407,26 +409,56 @@
 
     let miembrosGrupo = [];
     async function cargarGrupo(id) {
+        currentGroupId = id; // Guardamos el ID para nuevos acompañantes
         document.getElementById("step-2").style.display = "none"; document.getElementById("global-spinner").style.display = "block";
         try { const res = await fetch(`${URL_API}?action=getGroup&groupId=${id}`); miembrosGrupo = await res.json();
-            let html = ""; miembrosGrupo.forEach((m, i) => {
-                const haRes = (m.asistencia === "Sí" || m.asistencia === "No");
-                html += `<div>
-                    <div class="member-header ${haRes?'completed':''}" id="header-${i}" onpointerdown="toggleMember(${i})"><span>${m.nombre}</span> ${haRes?'<span>✅ Listo</span>':'<span>Pendiente</span>'}</div>
-                    <div class="member-content" id="content-${i}">
-                        <label>¿Asiste?</label><select class="sel-asistencia" onchange="checkStatus(${i})"><option value="Pendiente" ${(!haRes)?'selected':''}>Pendiente</option><option value="Sí" ${m.asistencia==='Sí'?'selected':''}>Sí</option><option value="No" ${m.asistencia==='No'?'selected':''}>No</option></select>
-                        <label>Menú</label><select class="sel-menu"><option value="Adulto" ${m.menu==='Adulto'?'selected':''}>Adulto</option><option value="Niño" ${m.menu==='Niño'?'selected':''}>Niño</option><option value="Bebé" ${m.menu==='Bebé'?'selected':''}>Bebé</option></select>
-                        <label>Bus Ida</label><select class="sel-bus-ida"><option value="No" ${(!m.bus_ida||m.bus_ida==='No')?'selected':''}>No</option><option value="Sí" ${m.bus_ida==='Sí'?'selected':''}>Sí</option></select>
-                        <label>Bus Vuelta</label><select class="sel-bus-vuelta"><option value="No" ${(!m.bus_vuelta||m.bus_vuelta==='No')?'selected':''}>No</option><option value="Vuelta 1 (00:45h)" ${m.bus_vuelta==='Vuelta 1 (00:45h)'?'selected':''}>Vuelta 1 (00:45h)</option><option value="Vuelta 2 (04:15h)" ${m.bus_vuelta==='Vuelta 2 (04:15h)'?'selected':''}>Vuelta 2 (04:15h)</option></select>
-                        <label>Alergias</label><textarea class="inp-alergia" placeholder="Ninguna" onpointerdown="event.stopPropagation()">${m.alergias||''}</textarea>
-                        <label>Tu canción para el DJ</label><input type="text" class="inp-cancion" value="${m.cancion||''}">
-                        <label>Mensaje público</label><textarea class="inp-mensaje-web" onpointerdown="event.stopPropagation()">${m.mensajeWeb||''}</textarea>
-                        <label>Mensaje privado para los novios</label><textarea class="inp-mensaje-privado" onpointerdown="event.stopPropagation()">${m.mensajePrivado||''}</textarea>
-                        <button class="btn-copy-settings" onpointerdown="copyToAll(${i})">Copiar todo al grupo</button>
-                    </div></div>`;
-            });
-            document.getElementById("lista-miembros").innerHTML = html; document.getElementById("step-3").style.display = "block";
+            renderListaMiembros();
+            document.getElementById("companero-btn-area").innerHTML = `<button class="btn-copy-settings" style="background:#fff; color:var(--pink); border-color:var(--pink); font-size:0.7rem;" onpointerdown="anadirAcompanante()">+ Añadir acompañante extra</button>`;
+            document.getElementById("step-3").style.display = "block";
         } catch(e) { alert("Error"); } document.getElementById("global-spinner").style.display = "none";
+    }
+
+    function renderListaMiembros() {
+        let html = ""; miembrosGrupo.forEach((m, i) => {
+            const haRes = (m.asistencia === "Sí" || m.asistencia === "No");
+            const esExtra = m.isNew;
+            html += `<div>
+                <div class="member-header ${haRes?'completed':''}" id="header-${i}" onpointerdown="toggleMember(${i})">
+                    <span>${esExtra ? (m.nombre || 'Nuevo Acompañante') : m.nombre}</span> 
+                    ${haRes?'<span>✅ Listo</span>':'<span>Pendiente</span>'}
+                </div>
+                <div class="member-content" id="content-${i}">
+                    ${esExtra ? `<label>Nombre del acompañante</label><input type="text" class="inp-nombre-extra" placeholder="Escribe su nombre" value="${m.nombre || ''}" onchange="miembrosGrupo[${i}].nombre = this.value">` : ''}
+                    <label>¿Asiste?</label><select class="sel-asistencia" onchange="checkStatus(${i})"><option value="Pendiente" ${(!haRes)?'selected':''}>Pendiente</option><option value="Sí" ${m.asistencia==='Sí'?'selected':''}>Sí</option><option value="No" ${m.asistencia==='No'?'selected':''}>No</option></select>
+                    <label>Menú</label><select class="sel-menu"><option value="Adulto" ${m.menu==='Adulto'?'selected':''}>Adulto</option><option value="Niño" ${m.menu==='Niño'?'selected':''}>Niño</option><option value="Bebé" ${m.menu==='Bebé'?'selected':''}>Bebé</option></select>
+                    <label>Bus Ida</label><select class="sel-bus-ida"><option value="No" ${(!m.bus_ida||m.bus_ida==='No')?'selected':''}>No</option><option value="Sí" ${m.bus_ida==='Sí'?'selected':''}>Sí</option></select>
+                    <label>Bus Vuelta</label><select class="sel-bus-vuelta"><option value="No" ${(!m.bus_vuelta||m.bus_vuelta==='No')?'selected':''}>No</option><option value="Vuelta 1 (00:45h)" ${m.bus_vuelta==='Vuelta 1 (00:45h)'?'selected':''}>Vuelta 1 (00:45h)</option><option value="Vuelta 2 (04:15h)" ${m.bus_vuelta==='Vuelta 2 (04:15h)'?'selected':''}>Vuelta 2 (04:15h)</option></select>
+                    <label>Alergias</label><textarea class="inp-alergia" placeholder="Ninguna">${m.alergias||''}</textarea>
+                    <label>Tu canción para el DJ</label><input type="text" class="inp-cancion" value="${m.cancion||''}">
+                    <label>Mensaje público</label><textarea class="inp-mensaje-web">${m.mensajeWeb||''}</textarea>
+                    <label>Mensaje privado para los novios</label><textarea class="inp-mensaje-privado">${m.mensajePrivado||''}</textarea>
+                    <button class="btn-copy-settings" onpointerdown="copyToAll(${i})">Copiar todo al grupo</button>
+                </div></div>`;
+        });
+        document.getElementById("lista-miembros").innerHTML = html;
+    }
+
+    function anadirAcompanante() {
+        miembrosGrupo.push({
+            nombre: "",
+            asistencia: "Sí",
+            menu: "Adulto",
+            alergias: "",
+            bus_ida: "No",
+            bus_vuelta: "No",
+            mensajePrivado: "",
+            mensajeWeb: "",
+            cancion: "",
+            isNew: true,
+            groupId: currentGroupId
+        });
+        renderListaMiembros();
+        toggleMember(miembrosGrupo.length - 1); // Abre el formulario del nuevo
     }
 
     function toggleMember(i) { document.getElementById(`content-${i}`).classList.toggle('open'); }
@@ -450,7 +482,26 @@
 
     async function enviarConfirmacion() {
         document.getElementById("global-spinner").style.display = "block";
-        const updates = miembrosGrupo.map((m, i) => ({ fila: m.fila, asistencia: document.querySelectorAll(".sel-asistencia")[i].value, menu: document.querySelectorAll(".sel-menu")[i].value, bus_ida: document.querySelectorAll(".sel-bus-ida")[i].value, bus_vuelta: document.querySelectorAll(".sel-bus-vuelta")[i].value, alergias: document.querySelectorAll(".inp-alergia")[i].value, cancion: document.querySelectorAll(".inp-cancion")[i].value, mensajeWeb: document.querySelectorAll(".inp-mensaje-web")[i].value, mensajePrivado: document.querySelectorAll(".inp-mensaje-privado")[i].value }));
+        const updates = miembrosGrupo.map((m, i) => {
+            let nombreFinal = m.nombre;
+            if (m.isNew) {
+                nombreFinal = document.querySelectorAll(".inp-nombre-extra")[0].value; // Cogemos el valor del input si es nuevo
+            }
+            return {
+                fila: m.fila || null, // Si es nuevo no tiene fila
+                groupId: m.groupId || null,
+                nombre: nombreFinal,
+                asistencia: document.querySelectorAll(".sel-asistencia")[i].value,
+                menu: document.querySelectorAll(".sel-menu")[i].value,
+                bus_ida: document.querySelectorAll(".sel-bus-ida")[i].value,
+                bus_vuelta: document.querySelectorAll(".sel-bus-vuelta")[i].value,
+                alergias: document.querySelectorAll(".inp-alergia")[i].value,
+                cancion: document.querySelectorAll(".inp-cancion")[i].value,
+                mensajeWeb: document.querySelectorAll(".inp-mensaje-web")[i].value,
+                mensajePrivado: document.querySelectorAll(".inp-mensaje-privado")[i].value
+            }
+        });
+
         try { await fetch(URL_API, { method: "POST", body: JSON.stringify(updates) }); localStorage.setItem('bodaMarinaJaime_CONFIRMADO', 'true'); location.reload(); } catch(e) { alert("Error"); document.getElementById("global-spinner").style.display = "none"; }
     }
 
@@ -475,8 +526,12 @@
         } catch(e) {}
     }
 
-    document.body.style.overflow = 'hidden';
-    if(localStorage.getItem('bodaMarinaJaime_CONFIRMADO') === 'true') revealFinalInvitation();
+    if(localStorage.getItem('bodaMarinaJaime_CONFIRMADO') === 'true') {
+        document.getElementById('game-container').style.display = 'none';
+        revealFinalInvitation();
+    } else {
+        document.body.style.overflow = 'hidden';
+    }
 </script>
 </body>
 </html>
